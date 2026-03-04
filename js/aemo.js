@@ -37,10 +37,10 @@ const AEMO = (() => {
         if (cached) return cached;
 
         const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 10000);
+        const timeout = setTimeout(() => controller.abort(), 3000);
 
         try {
-            // Try direct fetch first
+            // Try direct fetch first (short timeout — fall back quickly)
             const response = await fetch(url, {
                 signal: controller.signal,
                 headers: { 'Accept': 'application/json' }
@@ -54,7 +54,7 @@ const AEMO = (() => {
         } catch (directError) {
             clearTimeout(timeout);
 
-            // Try via CORS proxy as fallback
+            // Try one CORS proxy as fallback (short timeout)
             const proxyUrls = [
                 `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
                 `https://corsproxy.io/?${encodeURIComponent(url)}`
@@ -63,7 +63,7 @@ const AEMO = (() => {
             for (const proxyUrl of proxyUrls) {
                 try {
                     const proxyController = new AbortController();
-                    const proxyTimeout = setTimeout(() => proxyController.abort(), 10000);
+                    const proxyTimeout = setTimeout(() => proxyController.abort(), 3000);
                     const response = await fetch(proxyUrl, {
                         signal: proxyController.signal
                     });

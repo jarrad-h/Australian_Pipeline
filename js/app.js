@@ -92,15 +92,19 @@
     }
 
     // ── Load Pipeline Data ─────────────────────────────────
-    async function loadPipelineData() {
-        try {
-            const response = await fetch('data/pipelines.geojson');
-            pipelineData = await response.json();
+    function loadPipelineData() {
+        // Use the global PIPELINE_DATA embedded via <script> tag
+        // (avoids file:// CORS issues with fetch)
+        if (typeof PIPELINE_DATA !== 'undefined') {
+            pipelineData = PIPELINE_DATA;
             return pipelineData;
-        } catch (err) {
-            console.error('Failed to load pipeline data:', err);
-            return null;
         }
+
+        // Fallback: try fetch (works when served via HTTP)
+        return fetch('data/pipelines.geojson')
+            .then(r => r.json())
+            .then(data => { pipelineData = data; return data; })
+            .catch(err => { console.error('Failed to load pipeline data:', err); return null; });
     }
 
     // ── Render Pipelines ───────────────────────────────────
@@ -474,30 +478,31 @@
 
         initMap();
 
-        // Load data in parallel
-        const [data] = await Promise.all([
-            loadPipelineData(),
-            refreshAEMOData()
-        ]);
+        // Load pipeline data (sync from embedded script, or async fetch fallback)
+        const data = await Promise.resolve(loadPipelineData());
 
         if (!data) {
             loadingOverlay.innerHTML = '<p>Failed to load pipeline data. Please refresh.</p>';
             return;
         }
 
+        // Render map immediately with pipeline data
         renderPipelines();
         renderHubs();
         setupFilters();
         setupMobile();
 
+        // Hide loading overlay right away — don't wait for AEMO
+        loadingOverlay.classList.add('hidden');
+
         // Refresh button
         document.getElementById('refresh-btn').addEventListener('click', refreshAEMOData);
 
+        // Fetch AEMO data in background (non-blocking)
+        refreshAEMOData();
+
         // Auto-refresh AEMO data every 5 minutes
         setInterval(refreshAEMOData, 5 * 60 * 1000);
-
-        // Hide loading
-        loadingOverlay.classList.add('hidden');
     }
 
     // Start
