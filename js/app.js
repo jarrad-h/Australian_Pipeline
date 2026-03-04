@@ -476,7 +476,24 @@
     async function init() {
         const loadingOverlay = document.getElementById('loading-overlay');
 
-        initMap();
+        // Check Leaflet loaded (CDN can fail on file:// with SRI or ad-blockers)
+        if (typeof L === 'undefined') {
+            loadingOverlay.innerHTML = '<div style="text-align:center;padding:20px;max-width:500px">' +
+                '<p style="font-size:16px;margin-bottom:12px">Leaflet map library failed to load.</p>' +
+                '<p style="color:#94a3b8;font-size:13px">This usually happens when opening the file directly. ' +
+                'Try serving it with a local server instead:</p>' +
+                '<pre style="background:#1e293b;padding:12px;border-radius:6px;margin-top:12px;text-align:left;font-size:13px;color:#f59e0b">' +
+                'python3 -m http.server 8000\n# then open http://localhost:8000</pre></div>';
+            return;
+        }
+
+        try {
+            initMap();
+        } catch (err) {
+            console.error('Map init failed:', err);
+            loadingOverlay.innerHTML = '<p>Map failed to initialise. Check browser console.</p>';
+            return;
+        }
 
         // Load pipeline data (sync from embedded script, or async fetch fallback)
         const data = await Promise.resolve(loadPipelineData());
